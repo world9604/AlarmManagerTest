@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AlarmManagerTest</string>
+    <string name="not_change_autoRunAfterTimeout">Exception occurred : autoRunAfterTimeout 값은 분 단위로 변경할 수 없습니다.</string>
+</resources>

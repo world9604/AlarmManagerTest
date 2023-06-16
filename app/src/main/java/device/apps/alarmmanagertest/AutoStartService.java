@@ -11,26 +11,32 @@ import android.util.Log;
 
 import java.util.List;
 
+/**
+ * 일정 시간이 지난 뒤에 자동으로 실행 되는 기능 추가
+ * 전달받은 {@link #triggerAtSeconds}만큼 뒤에
+ * 콜백 되도록 AutoStartManager에게 등록하는 역할
+ */
 public class AutoStartService extends Service {
 
     private int triggerAtSeconds;
+    public static final String DISABLE_OPTION = "disable";
 
     @Override
     public void onCreate() {
-        Log.d(LOG_TAG, "AutoStartService onCreate()");
+        if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "AutoStartService onCreate()");
         super.onCreate();
     }
 
     @Override
     public void onDestroy() {
-        Log.d(LOG_TAG, "AutoStartService onDestroy()");
+        if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "AutoStartService onDestroy()");
         AutoStartManager.getInstance(this).cancelAlarm();
         super.onDestroy();
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        Log.d(LOG_TAG, "AutoStartService onTaskRemoved()");
+        if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "AutoStartService onTaskRemoved()");
         super.onTaskRemoved(rootIntent);
     }
 
@@ -39,10 +45,17 @@ public class AutoStartService extends Service {
         return null;
     }
 
+    /**
+     * intent로 넘어온 extra값(자동실행을 위한 시간값(단위:mills))을 이용해서 다음 작업을 한다.
+     * 1. {@link AutoStartManager#AUTO_START_TIMEOUT}가 "Disable" 인지 체크하고,
+     * 2. String -> int 타입으로 변경하고
+     * 3. {@link AutoStartManager#AUTO_START_TIMEOUT} 값으로 Alarm 을 등록한다.
+     */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(LOG_TAG, "AutoStartService onStartCommand()");
-        String triggerAtSecondsStr = intent.getStringExtra(AutoStartManager.AUTO_START_TIMEOUT);
+        if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "AutoStartService onStartCommand()");
+        final String triggerAtSecondsStr = intent.getStringExtra(AutoStartManager.AUTO_START_TIMEOUT);
+        if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "triggerAtSecondsStr in AutoStartService : " + triggerAtSecondsStr);
         if(stopIfDisableAutoStartOption(triggerAtSecondsStr)) return START_STICKY;
         this.triggerAtSeconds = toSecondsWithHandleException(triggerAtSecondsStr);
         AutoStartManager.getInstance(this).setAlarm(triggerAtSeconds);
@@ -58,11 +71,16 @@ public class AutoStartService extends Service {
     }
 
     private boolean isDisableAutoStartOption(String triggerAtSecondsStr) {
-        final String DISABLE_OPTION = "disable";
-        if (DISABLE_OPTION.equalsIgnoreCase(triggerAtSecondsStr)) {
-            Log.d(LOG_TAG, "autoRunAfterTimeout is Disable");
+        if (triggerAtSecondsStr == null) {
+            if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "autoRunAfterTimeout is null");
             return true;
         }
+
+        if (DISABLE_OPTION.equalsIgnoreCase(triggerAtSecondsStr)) {
+            if(AutoStartManager.isLogging) Log.d(AutoStartManager.LOG_TAG, "autoRunAfterTimeout is Disable");
+            return true;
+        }
+
         return false;
     }
 
@@ -70,7 +88,7 @@ public class AutoStartService extends Service {
         try {
             return toSecondsFrom(autoRunAfterTimeout);
         } catch (Exception e) {
-            Log.e(LOG_TAG,"Exception occurred : autoRunAfterTimeout 값은 분 단위로 변경할 수 없습니다.", e.getCause());
+            Log.w(AutoStartManager.LOG_TAG,"Exception in AutoStartService occurred : autoRunAfterTimeout 값은 초 단위로 변경할 수 없습니다.", e.getCause());
             return -1;
         }
     }
